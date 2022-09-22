@@ -1,0 +1,115 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<h1>Web Sockets Test</h1>
+<div class="formRow">
+    <label>HTTP:</label>
+    <input id="httpUrl" type="text" />
+    <button onclick="connectHttp()">HTTP Request</button>
+</div>
+<div class="formRow">
+    <label>Web socket:</label>
+    <input id="wsUrl" type="text" />
+    <button id="wsRequestButton" onclick="connectWebSocket()">WS Request</button>
+</div>
+
+<p id="urlText"></p>
+<p id="timeGoesHere"></p>
+<p id="statusGoesHere"></p>
+@section Scripts{ 
+<script>
+    let webSocket = null;
+
+    $(function() {
+        const url = "api/time";
+        $("#httpUrl").val(url);
+
+        const wsUrl = getWebSocketUrl(url);
+        $("#wsUrl").val(wsUrl);
+    });
+
+    function connectHttp() {
+        const url = $("#httpUrl").val();
+        $("#urlText").text("Connected to HTTP server at " + url);
+        $.ajax(url)
+            .done(function(response) {
+                const str = JSON.parse(response);
+                showTime(str, 'black');
+                clearStatus();
+            })
+            .fail(function (xhr) {
+                clearTime();
+                showStatus("HTTP Error " + xhr.status + ': ' + xhr.statusText);
+            })
+    }
+
+    function connectWebSocket() {
+        if (webSocket) {
+            webSocket.close();
+            onWebSocketDisconnected("Web socket closed by client");
+            return;
+        }
+        $("#wsRequestButton").text("Disconnect");
+        clearTime();
+        clearStatus();
+
+        const wsUrl = $("#wsUrl").val();
+        $("#urlText").text("Connected to web socket at " + wsUrl);
+        webSocket = new WebSocket(wsUrl);
+        webSocket.onmessage = function (event) {
+            alert(event);
+            console.log(event);
+                //const str = JSON.parse(event.data);
+                //showTime(str, 'blue');
+                //clearStatus();
+            };
+
+        webSocket.onerror =
+            function(event) {
+                onWebSocketDisconnected("Web socket error: " + event);
+                console.log(event)
+            };
+
+        webSocket.onclose =
+            function () { onWebSocketDisconnected("Web socket closed by server"); };
+    }
+
+    function onWebSocketDisconnected(status) {
+        $("#wsRequestButton").text("WS Request");
+        showStatus(status);
+        clearListeners(webSocket);
+        webSocket = null;
+    }
+
+    function clearListeners(webSocket) {
+        webSocket.onmessage = null;
+        webSocket.onerror = null;
+        webSocket.onclose = null;
+    }
+
+    function showStatus(text) {
+        $("#statusGoesHere").text(text);
+    }
+
+    function clearStatus(text) {
+        showStatus('');
+    }
+
+    function showTime(time, color) {
+        $("#timeGoesHere").css("color", color);
+        $("#timeGoesHere").text(time);
+    }
+
+    function clearTime() {
+        showTime('', 'black');
+    }
+
+    function getWebSocketUrl(relativeUrl) {
+        var location = window.location;
+        var wsProtocol = (location.protocol === "https:") ? "wss:" : "ws:";
+        var result = wsProtocol + "//" + location.host + "/" + relativeUrl;
+        return result;
+    }
+</script>
+    }
